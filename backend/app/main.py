@@ -1,12 +1,15 @@
-"""FastAPI application: startup/shutdown, CORS and routers."""
+"""FastAPI application: startup/shutdown, CORS, error handlers and routers."""
 
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from neo4j.exceptions import DriverError, Neo4jError
+from sqlalchemy.exc import InterfaceError, OperationalError
 
-from app.api import health
+from app.api import auth, health, users
 from app.brain.driver import create_driver
 from app.brain.schema import setup_schema
 from app.config import get_settings
@@ -46,4 +49,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# --- Database outages become a friendly 503, never a stack trace -------------
+# A route that can do something better than fail (like /chat when Neo4j is down)
+# catches the error itself, so it never reaches these handlers.
+
+
+# OSError: Postgres cannot be reached at all (connection refused, timeout).
+# OperationalError / InterfaceError: the connection broke while in use.
+@app.exception_handler(OSError)
+@app.exception_handler(OperationalError)
+@app.exception_handler(InterfaceError)
+async def postgres_unavailable(request: Request, error: Exception) -> JSONResponse:
+    logger.error("Postgres unavailable on %s %s: %r", request.method, request.url.path, error)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "The service is temporarily unavailable. Please try again in a moment."},
+    )
+
+
+# DriverError: Neo4j cannot be reached. Neo4jError: the server returned an error.
+@app.exception_handler(DriverError)
+@app.exception_handler(Neo4jError)
+async def neo4j_unavailable(request: Request, error: Exception) -> JSONResponse:
+    logger.error("Neo4j unavailable on %s %s: %r", request.method, request.url.path, error)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Your profile is temporarily unavailable. Please try again in a moment."},
+    )
+
+
 app.include_router(health.router)
+app.include_router(auth.router)
+app.include_router(users.router)

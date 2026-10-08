@@ -5,7 +5,10 @@ from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from app.config import Settings
 
-CONNECT_TIMEOUT_SECONDS = 10
+CONNECT_TIMEOUT_SECONDS = 5
+# The driver retries a failed query by itself. Its default is to keep trying for 30
+# seconds, which would leave a user waiting that long when Neo4j is down.
+RETRY_SECONDS = 5
 
 
 def create_driver(settings: Settings) -> AsyncDriver:
@@ -14,6 +17,7 @@ def create_driver(settings: Settings) -> AsyncDriver:
         settings.neo4j_uri,
         auth=(settings.neo4j_user, settings.neo4j_password),
         connection_timeout=CONNECT_TIMEOUT_SECONDS,
+        max_transaction_retry_time=RETRY_SECONDS,
     )
 
 

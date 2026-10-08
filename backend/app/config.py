@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     neo4j_user: str
     neo4j_password: str
 
+    # --- Auth ---
+    jwt_secret: str
+    jwt_expiry_minutes: int = 60 * 24 * 7  # 7 days; there is no refresh token
+
     # --- HTTP ---
     # Comma-separated list of allowed browser origins.
     cors_origins: str = ""
