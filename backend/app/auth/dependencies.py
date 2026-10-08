@@ -2,12 +2,10 @@
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.tokens import read_user_id
-from app.db import user_repository
-from app.db.engine import get_db
 from app.db.models import UserRow
+from app.db.user_repository import UserRepository, get_user_repository
 
 # auto_error=False so a missing header gives our own 401 below.
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -15,7 +13,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db),
+    users: UserRepository = Depends(get_user_repository),
 ) -> UserRow:
     """Read `Authorization: Bearer <token>` and return the matching user.
 
@@ -33,7 +31,7 @@ async def get_current_user(
     if user_id is None:
         raise unauthorized
 
-    user = await user_repository.get_by_id(db, user_id)
+    user = await users.get_by_id(user_id)
     if user is None:
         raise unauthorized
     return user

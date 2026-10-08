@@ -119,10 +119,10 @@ async def test_login_returns_a_token_and_the_profile_flag(client):
 async def test_login_does_not_need_neo4j(client, neo4j_down):
     # Signup needs Neo4j, so create the Postgres row directly.
     from app.auth.passwords import hash_password
-    from app.db import user_repository
+    from app.db.user_repository import UserRepository
 
     async with app.state.session_factory() as db:
-        await user_repository.create(db, "rahul@example.com", hash_password("correct-horse"))
+        await UserRepository(db).create("rahul@example.com", hash_password("correct-horse"))
 
     response = await client.post("/auth/login", json=CREDENTIALS)
 
