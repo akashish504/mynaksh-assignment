@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from neo4j.exceptions import DriverError, Neo4jError
 from sqlalchemy.exc import InterfaceError, OperationalError
 
-from app.api import auth, health, sessions, users
+from app.api import auth, chat, health, sessions, users
 from app.brain.driver import create_driver
 from app.brain.schema import setup_schema
 from app.classifier.router import create_classifier
@@ -88,3 +88,4 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(sessions.router)
+app.include_router(chat.router)

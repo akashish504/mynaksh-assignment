@@ -112,3 +112,110 @@ VALID_PROFILE = {
     "birth_time_known": True,
     "birth_place": "Delhi",
 }
+
+
+# --- Chat test helpers --------------------------------------------------------
+
+import uuid
+from datetime import datetime, timedelta, timezone
+
+from app.auth.tokens import read_user_id
+from app.brain.memory_repository import MemoryRepository
+from app.classifier.base import RouteResult
+from app.classifier.fake import FakeClassifier
+from app.llm.fake import FakeLLM
+from app.models.memory import MemoryNode
+
+
+def route(intent="general", areas=("general",), durable=0.1, confidence=0.95) -> RouteResult:
+    """A scripted routing decision for FakeClassifier."""
+    return RouteResult(
+        intent=intent,
+        intent_confidence=confidence,
+        areas=list(areas),
+        has_durable_fact=durable,
+        source="jev",
+    )
+
+
+@pytest.fixture
+def fake_llm(client):
+    """Replace the real LLM with FakeLLM for the test. Nothing is sent to a provider."""
+    real_llm = app.state.llm
+    app.state.llm = FakeLLM()
+    yield app.state.llm
+    app.state.llm = real_llm
+
+
+@pytest.fixture
+def fake_classifier(client):
+    """Replace the real classifier with a scripted one. Set `.results` in the test."""
+    real_classifier = app.state.classifier
+    app.state.classifier = FakeClassifier(route())
+    yield app.state.classifier
+    app.state.classifier = real_classifier
+
+
+def user_id_of(headers: dict) -> str:
+    token = headers["Authorization"].removeprefix("Bearer ")
+    return str(read_user_id(token))
+
+
+async def onboard(client: AsyncClient, email: str = "rahul@example.com", **profile_changes) -> dict:
+    """Sign up and complete the onboarding form. Returns the Authorization headers."""
+    headers = await signup(client, email)
+    response = await client.put(
+        "/users/me/profile", json={**VALID_PROFILE, **profile_changes}, headers=headers
+    )
+    assert response.status_code == 200, response.text
+    return headers
+
+
+async def new_session(client: AsyncClient, headers: dict) -> str:
+    response = await client.post("/sessions", headers=headers)
+    assert response.status_code == 201, response.text
+    return response.json()["id"]
+
+
+async def add_memory(
+    headers: dict,
+    text: str,
+    kind: str = "goal",
+    life_area: str = "career",
+    confidence: float = 0.9,
+    importance: float = 0.8,
+    days_old: int = 0,
+    status: str = "active",
+    title: str = "A memory",
+    attributes: dict | None = None,
+) -> str:
+    """Put a memory node straight into Neo4j for the user and return its id."""
+    when = datetime.now(timezone.utc) - timedelta(days=days_old)
+    memory = MemoryNode(
+        id=str(uuid.uuid4()),
+        kind=kind,
+        title=title,
+        text=text,
+        life_area=life_area,
+        attributes=attributes or {},
+        confidence=confidence,
+        importance=importance,
+        status=status,
+        created_at=when,
+        updated_at=when,
+    )
+    await MemoryRepository(app.state.neo4j).create(user_id_of(headers), memory)
+    return memory.id
+
+
+async def ask(client: AsyncClient, headers: dict, session_id: str, message: str) -> dict:
+    response = await client.post(
+        "/chat", json={"session_id": session_id, "message": message}, headers=headers
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def prompt_text(llm: FakeLLM, call: int = -1) -> str:
+    """Everything that was sent to the LLM in one call, as a single string."""
+    return "\n\n".join(message["content"] for message in llm.calls[call])

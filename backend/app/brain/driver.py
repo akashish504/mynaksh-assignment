@@ -18,6 +18,9 @@ def create_driver(settings: Settings) -> AsyncDriver:
         auth=(settings.neo4j_user, settings.neo4j_password),
         connection_timeout=CONNECT_TIMEOUT_SECONDS,
         max_transaction_retry_time=RETRY_SECONDS,
+        # Neo4j warns when a query names a relationship type that no node has yet
+        # (e.g. PREFERS before the first preference is stored). That is expected here.
+        notifications_min_severity="OFF",
     )
 
 
