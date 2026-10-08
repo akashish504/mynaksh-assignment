@@ -1,0 +1,32 @@
+.page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px;
+}
+
+.brand {
+  font-weight: 700;
+}
+
+.subtitle {
+  margin-bottom: 24px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.switch {
+  margin-top: 20px;
+  text-align: center;
+}

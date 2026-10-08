@@ -1,0 +1,64 @@
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.title {
+  font-weight: 700;
+}
+
+.card {
+  padding: 20px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 20px;
+  margin: 8px 0 0;
+}
+
+.facts dt {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.area {
+  margin: 8px 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.memory {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 8px 14px 16px;
+}
+
+.memoryBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.memoryMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.dialogNote {
+  margin-top: 12px;
+}

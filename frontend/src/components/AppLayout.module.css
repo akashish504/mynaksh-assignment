@@ -1,0 +1,53 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.toolbar {
+  gap: 8px;
+}
+
+.brand {
+  font-weight: 700;
+  margin-right: 16px;
+}
+
+.nav {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.link,
+.linkActive {
+  color: inherit;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.link:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.linkActive {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* The page fills the rest of the screen and scrolls on its own. */
+.page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+@media (max-width: 480px) {
+  .brand {
+    display: none;
+  }
+}

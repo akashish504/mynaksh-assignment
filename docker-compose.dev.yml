@@ -27,6 +27,8 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: mynaksh-dev-password
       JWT_SECRET: local-development-secret-not-for-production
+      # The Vite dev server (npm run dev in frontend/) runs here.
+      CORS_ORIGINS: http://localhost:5173
     depends_on:
       postgres:
         condition: service_healthy
