@@ -1,0 +1,22 @@
+"""Neo4j driver creation and the FastAPI dependency that hands it to routes."""
+
+from fastapi import Request
+from neo4j import AsyncDriver, AsyncGraphDatabase
+
+from app.config import Settings
+
+CONNECT_TIMEOUT_SECONDS = 10
+
+
+def create_driver(settings: Settings) -> AsyncDriver:
+    # Creating the driver does not connect; the first query does.
+    return AsyncGraphDatabase.driver(
+        settings.neo4j_uri,
+        auth=(settings.neo4j_user, settings.neo4j_password),
+        connection_timeout=CONNECT_TIMEOUT_SECONDS,
+    )
+
+
+def get_driver(request: Request) -> AsyncDriver:
+    """FastAPI dependency: the one shared Neo4j driver."""
+    return request.app.state.neo4j
