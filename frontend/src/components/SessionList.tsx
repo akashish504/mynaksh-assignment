@@ -29,6 +29,7 @@ export function SessionList({ sessions, activeId, onSelect, onNew }: Props) {
             selected={session.id === activeId}
             onClick={() => onSelect(session.id)}
             className={styles.item}
+            data-testid="session-item"
           >
             <ListItemText primary={session.title} slotProps={{ primary: { noWrap: true } }} />
           </ListItemButton>

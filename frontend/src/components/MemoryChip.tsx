@@ -30,6 +30,7 @@ export function MemoryChip({ update }: { update: MemoryUpdate }) {
       variant="outlined"
       icon={<AutoAwesomeIcon />}
       label={describeUpdate(update)}
+      data-testid="memory-chip"
     />
   );
 }

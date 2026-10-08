@@ -29,6 +29,8 @@ services:
       JWT_SECRET: local-development-secret-not-for-production
       # The Vite dev server (npm run dev in frontend/) runs here.
       CORS_ORIGINS: http://localhost:5173
+      # Local runs (including the browser tests) never send traces to LangSmith.
+      LANGSMITH_TRACING: "false"
     depends_on:
       postgres:
         condition: service_healthy

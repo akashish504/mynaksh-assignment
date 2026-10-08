@@ -2,15 +2,25 @@ import Alert from "@mui/material/Alert";
 import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { api } from "../api/client";
 import { useAuth } from "../auth/useAuth";
 import { ProfileForm } from "../components/ProfileForm";
 import styles from "./FormPage.module.css";
 
 export function ProfilePage() {
-  const { me } = useAuth();
+  const { me, setMe } = useAuth();
   const [saved, setSaved] = useState(false);
+
+  // The profile can change outside this page (a correction made in chat), so the
+  // latest version is fetched every time the page is opened.
+  useEffect(() => {
+    api
+      .getMe()
+      .then(setMe)
+      .catch(() => {}); // on failure the copy loaded at login is still shown
+  }, [setMe]);
   const zodiac = me?.profile?.zodiac;
 
   return (

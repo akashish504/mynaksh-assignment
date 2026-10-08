@@ -122,7 +122,7 @@ export function MemoryPage() {
           </Typography>
           <div className={styles.list}>
             {page.memories[area].map((memory) => (
-              <Paper key={memory.id} className={styles.memory} elevation={1}>
+              <Paper key={memory.id} className={styles.memory} elevation={1} data-testid="memory-card">
                 <div className={styles.memoryBody}>
                   <div className={styles.memoryMeta}>
                     <Chip size="small" label={capitalize(memory.kind)} />
