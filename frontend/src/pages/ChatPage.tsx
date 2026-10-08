@@ -144,7 +144,9 @@ export function ChatPage() {
 
   async function send() {
     const text = draft.trim();
-    if (!text || !sessionId || sending) return;
+    // Not while the history is still loading: its late answer would replace the
+    // list and wipe the message that was just added.
+    if (!text || !sessionId || sending || loadingMessages) return;
 
     // Show the user's message straight away, under a temporary id.
     const temporaryId = `sending-${Date.now()}`;
@@ -263,7 +265,7 @@ export function ChatPage() {
           <IconButton
             color="primary"
             onClick={() => void send()}
-            disabled={sending || !draft.trim() || !sessionId}
+            disabled={sending || loadingMessages || !draft.trim() || !sessionId}
             aria-label="Send"
           >
             <SendIcon />
