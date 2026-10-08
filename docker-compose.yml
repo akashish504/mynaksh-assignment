@@ -1,0 +1,14 @@
+# Production: runs on the Oracle VM. The databases are managed services
+# (Neon and AuraDB), so they are not in this file; their addresses come from .env.
+#
+#   docker compose up -d --build
+
+services:
+  api:
+    build: ./backend
+    env_file: .env
+    restart: unless-stopped
+    # Reachable only from the VM itself. The HTTPS proxy in front of it is the
+    # only thing exposed to the internet.
+    ports:
+      - "127.0.0.1:8000:8000"

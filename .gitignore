@@ -20,3 +20,8 @@ dist/
 # OS / editor
 .DS_Store
 .vscode/
+
+# SSH keys must never be committed
+*.key
+*.key.pub
+*.pem
