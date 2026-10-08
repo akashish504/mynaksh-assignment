@@ -65,6 +65,20 @@ class ChatPipeline:
         self.llm = llm
         self.settings = settings
 
+    # One trace per chat turn, with every step below nested inside it. Only the session
+    # id and the message are recorded as inputs: the user row (which holds the password
+    # hash) is deliberately kept out of the trace.
+    @traceable(
+        name="chat.turn",
+        process_inputs=lambda inputs: {
+            "session_id": str(inputs.get("session_id")),
+            "message": inputs.get("message"),
+        },
+        process_outputs=lambda result: {
+            "context_used": result.response.context_used,
+            "memory_job_scheduled": result.memory_job is not None,
+        },
+    )
     async def handle_turn(self, user: UserRow, session_id: uuid.UUID, message: str) -> TurnResult:
         received_at = datetime.now(timezone.utc)
 
