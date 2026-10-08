@@ -189,7 +189,9 @@ export function ChatPage() {
   const sessionList = (
     <SessionList sessions={sessions} activeId={sessionId} onSelect={openSession} onNew={startNewChat} />
   );
-  const isEmpty = !loadingMessages && messages.length === 0;
+  // Still getting ready: no session opened yet, or its history is on the way.
+  const preparing = !sessionId || loadingMessages;
+  const isEmpty = !preparing && messages.length === 0;
 
   return (
     <div className={styles.layout}>
@@ -210,7 +212,7 @@ export function ChatPage() {
         </div>
 
         <div className={styles.messages}>
-          {loadingMessages && <Loading label="Loading chat" />}
+          {preparing && !error && <Loading label="Loading chat" />}
           {isEmpty && (
             <div className={styles.empty}>
               <Typography variant="h6">Ask me anything</Typography>
