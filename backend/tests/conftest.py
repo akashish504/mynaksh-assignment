@@ -15,6 +15,11 @@ os.environ["NEO4J_URI"] = os.environ.get("TEST_NEO4J_URI", "bolt://localhost:768
 os.environ["NEO4J_USER"] = os.environ.get("TEST_NEO4J_USER", "neo4j")
 os.environ["NEO4J_PASSWORD"] = os.environ.get("TEST_NEO4J_PASSWORD", "mynaksh-dev-password")
 os.environ["JWT_SECRET"] = "test-only-secret-for-local-throwaway-databases"
+# No real LLM, classifier or tracing calls from tests, whatever .env says.
+os.environ["LANGSMITH_TRACING"] = "false"
+os.environ["TYPESAFE_API_KEY"] = "test-key-never-sent-anywhere"
+os.environ["PRIMARY_MODEL"] = "test/primary-model"
+os.environ["FALLBACK_MODEL"] = ""
 
 from pathlib import Path
 

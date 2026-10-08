@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -35,7 +36,7 @@ class Settings(BaseSettings):
     # --- Feature flags ---
     clarify_enabled: bool = False
     use_embeddings: bool = False  # reserved, not implemented
-    classifier: str = "jev"  # "jev" or "llm"
+    classifier: Literal["jev", "llm"] = "jev"
     memory_gate_enabled: bool = True
 
     # --- Tuning ---
@@ -50,6 +51,8 @@ class Settings(BaseSettings):
     primary_model: str = ""
     fallback_model: str = ""
     jev_model: str = "jev-1.13.0"
+    jev_timeout_seconds: float = 3.0
+    typesafe_api_key: str = ""
 
     @property
     def migration_database_url(self) -> str:

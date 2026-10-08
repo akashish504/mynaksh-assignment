@@ -12,8 +12,10 @@ from sqlalchemy.exc import InterfaceError, OperationalError
 from app.api import auth, health, sessions, users
 from app.brain.driver import create_driver
 from app.brain.schema import setup_schema
+from app.classifier.router import create_classifier
 from app.config import get_settings
 from app.db.engine import create_engine, create_session_factory
+from app.llm.litellm_provider import create_llm
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -27,6 +29,8 @@ async def lifespan(app: FastAPI):
     app.state.engine = create_engine(settings.database_url)
     app.state.session_factory = create_session_factory(app.state.engine)
     app.state.neo4j = create_driver(settings)
+    app.state.llm = create_llm(settings)
+    app.state.classifier = create_classifier(settings, app.state.llm)
 
     try:
         await setup_schema(app.state.neo4j)
@@ -36,6 +40,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    await app.state.classifier.aclose()
     await app.state.neo4j.close()
     await app.state.engine.dispose()
 
