@@ -44,6 +44,13 @@ WHERE m.status = 'active' AND m.id IN $ids
 RETURN m
 """
 
+DELETE_BY_ID = f"""
+MATCH {USER_MEMORIES}
+WHERE m.id = $memory_id
+DETACH DELETE m
+RETURN count(*) AS deleted
+"""
+
 
 def create_query(kind: str) -> str:
     # Labels and relationship types cannot be query parameters in Cypher, so they are
@@ -56,6 +63,22 @@ def create_query(kind: str) -> str:
     CREATE (m:{label} $properties)
     CREATE (u)-[:{relationship}]->(m)
     CREATE (m)-[:ABOUT]->(area)
+    """
+
+
+def supersede_query(kind: str) -> str:
+    """Mark the old memory superseded and create its replacement, in one transaction."""
+    label = KIND_TO_LABEL[kind]
+    relationship = KIND_TO_RELATIONSHIP[kind]
+    return f"""
+    MATCH {USER_MEMORIES}
+    WHERE m.id = $old_id AND m.status = 'active'
+    MATCH (area:LifeArea {{name: $life_area}})
+    SET m.status = 'superseded', m.superseded_by = $new_id, m.updated_at = $now
+    CREATE (new:{label} $properties)
+    CREATE (u)-[:{relationship}]->(new)
+    CREATE (new)-[:ABOUT]->(area)
+    RETURN count(*) AS replaced
     """
 
 
@@ -88,6 +111,32 @@ class MemoryRepository:
             life_area=memory.life_area,
             properties=properties,
         )
+
+    async def supersede(self, user_id: str, old_id: str, new_memory: MemoryNode) -> bool:
+        """Replace an active memory with a new one. Returns False if the old one was not found.
+
+        The old node is kept (status 'superseded', pointing at its replacement) so the
+        history of what the user said is not lost; it is never selected again.
+        """
+        properties = new_memory.model_dump()
+        properties["attributes"] = json.dumps(new_memory.attributes)
+        records, _, _ = await self.driver.execute_query(
+            supersede_query(new_memory.kind),
+            user_id=user_id,
+            old_id=old_id,
+            new_id=new_memory.id,
+            life_area=new_memory.life_area,
+            now=new_memory.created_at,
+            properties=properties,
+        )
+        return records[0]["replaced"] > 0
+
+    async def delete(self, user_id: str, memory_id: str) -> bool:
+        """Hard-delete one of the user's memories. Returns False if it was not theirs or not found."""
+        records, _, _ = await self.driver.execute_query(
+            DELETE_BY_ID, user_id=user_id, memory_id=memory_id
+        )
+        return records[0]["deleted"] > 0
 
     async def get_active_by_areas(self, user_id: str, areas: list[str]) -> list[MemoryNode]:
         records, _, _ = await self.driver.execute_query(

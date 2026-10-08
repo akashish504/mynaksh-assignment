@@ -40,6 +40,13 @@ class MessageRepository:
         newest_first = list(result.scalars())
         return list(reversed(newest_first))
 
+    async def get_for_user(self, message_id: uuid.UUID, user_id: uuid.UUID) -> MessageRow | None:
+        """Return the message only if it belongs to this user."""
+        result = await self.db.execute(
+            select(MessageRow).where(MessageRow.id == message_id, MessageRow.user_id == user_id)
+        )
+        return result.scalar_one_or_none()
+
     async def save_turn(
         self,
         session: SessionRow,

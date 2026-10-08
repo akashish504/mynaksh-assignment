@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.models.profile import Profile
 
 MemoryKind = Literal["goal", "interest", "preference", "memory"]
 
@@ -25,3 +27,38 @@ class MemoryNode(BaseModel):
     # Postgres ids of where this memory came from.
     source_session_id: str | None = None
     source_message_id: str | None = None
+
+
+class MemoryUpdate(BaseModel):
+    """One memory write, as shown in the "memory updated" indicator."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    action: Literal["created", "updated", "profile_corrected"]
+    kind: str
+    title: str
+    life_area: str
+    memory_id: str | None
+
+
+class MemoryUpdatesResponse(BaseModel):
+    status: Literal["pending", "done", "skipped", "failed"]
+    updates: list[MemoryUpdate]
+
+
+class MemoryItem(BaseModel):
+    """A memory as shown on the memory page."""
+
+    id: str
+    kind: MemoryKind
+    title: str
+    text: str
+    life_area: str
+    attributes: dict
+    created_at: datetime
+
+
+class MemoryPageResponse(BaseModel):
+    profile: Profile | None
+    # Active memories grouped by life area, e.g. {"career": [...], "health": [...]}.
+    memories: dict[str, list[MemoryItem]]

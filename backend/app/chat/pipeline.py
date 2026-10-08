@@ -5,6 +5,7 @@
 
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from fastapi import Depends
@@ -23,16 +24,26 @@ from app.db.models import MessageRow, SessionRow, UserRow
 from app.db.session_repository import DEFAULT_TITLE, SessionRepository, get_session_repository
 from app.llm.base import LLMError, LLMProvider
 from app.llm.litellm_provider import get_llm
+from app.memory.task import MemoryJob
 from app.models.chat import ChatResponse
 
 logger = logging.getLogger(__name__)
 
 TITLE_MAX_LENGTH = 60
+# How many earlier messages the memory extraction step is shown for context.
+MEMORY_CONTEXT_MESSAGES = 2
 LLM_FAILURE_REPLY = "I'm having trouble answering right now. Please try again in a moment."
 
 
 class SessionNotFound(Exception):
     """The session does not exist or belongs to another user."""
+
+
+@dataclass
+class TurnResult:
+    response: ChatResponse
+    # Set when the memory gate passed: the route schedules it to run after the reply is sent.
+    memory_job: MemoryJob | None
 
 
 class ChatPipeline:
@@ -54,7 +65,7 @@ class ChatPipeline:
         self.llm = llm
         self.settings = settings
 
-    async def handle_turn(self, user: UserRow, session_id: uuid.UUID, message: str) -> ChatResponse:
+    async def handle_turn(self, user: UserRow, session_id: uuid.UUID, message: str) -> TurnResult:
         received_at = datetime.now(timezone.utc)
 
         session = await self.load_session(session_id, user.id)
@@ -68,13 +79,18 @@ class ChatPipeline:
 
         await self.load_profile(state)
         await self.load_history(state)
+        # Copied now, because the small-talk retriever may shorten state.history.
+        recent_messages = [
+            {"role": row.role, "content": row.content}
+            for row in state.history[-MEMORY_CONTEXT_MESSAGES:]
+        ]
         await self.route(state)
         await self.retrieve(state)
         prompt = self.build_prompt(state)
         await self.generate(state, prompt)
         user_message = await self.save(state, received_at)
 
-        return ChatResponse(
+        response = ChatResponse(
             response=state.reply,
             user_id=user.id,
             session_id=session.id,
@@ -83,6 +99,18 @@ class ChatPipeline:
             options=None,
             context_used=state.context_used,
         )
+
+        # Step 10: the background memory task runs only when the gate let the message through.
+        memory_job = None
+        if user_message.memory_status == "pending":
+            memory_job = MemoryJob(
+                user_id=user.id,
+                session_id=session.id,
+                message_id=user_message.id,
+                message=message,
+                recent_messages=recent_messages,
+            )
+        return TurnResult(response=response, memory_job=memory_job)
 
     # --- Step 1: verify session ownership (Postgres), load profile and zodiac (Neo4j) ---
 

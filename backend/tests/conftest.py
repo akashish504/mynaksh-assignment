@@ -219,3 +219,49 @@ async def ask(client: AsyncClient, headers: dict, session_id: str, message: str)
 def prompt_text(llm: FakeLLM, call: int = -1) -> str:
     """Everything that was sent to the LLM in one call, as a single string."""
     return "\n\n".join(message["content"] for message in llm.calls[call])
+
+
+# --- Memory test helpers ------------------------------------------------------
+
+from app.memory.schemas import ExtractedAttribute, ExtractedItem, ExtractionOutput
+
+
+def extracted(
+    text: str = "Career goal: plans to switch jobs in 2027.",
+    action: str = "create",
+    kind: str = "goal",
+    life_area: str = "career",
+    title: str = "Switch jobs",
+    target_id: str | None = None,
+    attributes: dict | None = None,
+    profile_field: str | None = None,
+    profile_value: str | None = None,
+    confidence: float = 0.9,
+    importance: float = 0.8,
+) -> ExtractedItem:
+    """One item as the extraction LLM would return it."""
+    return ExtractedItem(
+        action=action,
+        target_id=target_id,
+        kind=kind,
+        title=title,
+        text=text,
+        life_area=life_area,
+        attributes=[ExtractedAttribute(name=k, value=str(v)) for k, v in (attributes or {}).items()],
+        profile_field=profile_field,
+        profile_value=profile_value,
+        confidence=confidence,
+        importance=importance,
+    )
+
+
+def profile_correction(field: str, value: str) -> ExtractedItem:
+    return extracted(
+        text=f"{field} is {value}", kind="profile_correction", life_area="general",
+        title="Profile", profile_field=field, profile_value=value,
+    )
+
+
+def extraction(*items: ExtractedItem) -> ExtractionOutput:
+    """What FakeLLM returns for one extraction call. No items = nothing worth storing."""
+    return ExtractionOutput(items=list(items))

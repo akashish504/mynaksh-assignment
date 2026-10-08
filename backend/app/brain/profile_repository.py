@@ -35,6 +35,21 @@ MERGE (z:Zodiac {name: $sun_sign})
 MERGE (u)-[:HAS_ZODIAC]->(z)
 """
 
+# `SET u += $changes` updates only the properties named in the map.
+UPDATE_FROM_CHAT = """
+MATCH (u:User {id: $user_id})
+SET u += $changes, u.profile_updated_via = 'chat', u.updated_at = datetime()
+"""
+
+MOVE_ZODIAC_LINK = """
+MATCH (u:User {id: $user_id})
+OPTIONAL MATCH (u)-[old:HAS_ZODIAC]->(:Zodiac)
+DELETE old
+WITH DISTINCT u
+MERGE (z:Zodiac {name: $sun_sign})
+MERGE (u)-[:HAS_ZODIAC]->(z)
+"""
+
 GET_PROFILE = """
 MATCH (u:User {id: $user_id})
 OPTIONAL MATCH (u)-[:HAS_ZODIAC]->(z:Zodiac)
@@ -77,6 +92,15 @@ class ProfileRepository:
             sun_sign=sun_sign,
             updated_via=updated_via,
         )
+
+    async def update_from_chat(self, user_id: str, changes: dict, sun_sign: str | None) -> None:
+        """Apply a profile correction the user made in conversation.
+
+        `sun_sign` is given only when the date of birth changed, to move the zodiac link.
+        """
+        await self.driver.execute_query(UPDATE_FROM_CHAT, user_id=user_id, changes=changes)
+        if sun_sign is not None:
+            await self.driver.execute_query(MOVE_ZODIAC_LINK, user_id=user_id, sun_sign=sun_sign)
 
     async def get_profile(self, user_id: str) -> Profile | None:
         """Return the profile with its zodiac, or None if nothing has been filled in yet."""

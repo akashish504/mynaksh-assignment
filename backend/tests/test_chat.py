@@ -17,6 +17,7 @@ from tests.conftest import (
     BrokenNeo4jDriver,
     add_memory,
     ask,
+    extraction,
     new_session,
     onboard,
     prompt_text,
@@ -489,13 +490,15 @@ async def test_both_messages_are_saved_with_their_fields(client, fake_llm, fake_
     goal_id = await add_memory(headers, GOAL_TEXT, life_area="career")
     session_id = await new_session(client, headers)
     fake_classifier.results = [route("general", ["career"], durable=0.9)]
+    fake_llm.json_replies = [extraction()]  # the memory task finds nothing new to store
 
     body = await ask(client, headers, session_id, "I'm planning to switch jobs next year.")
 
     user_message, assistant_message = await saved_messages(session_id)
     assert user_message.role == "user"
     assert user_message.content == "I'm planning to switch jobs next year."
-    assert user_message.memory_status == "pending"  # the gate score 0.9 is above 0.5
+    # The gate score 0.9 is above 0.5, so the memory task ran and finished.
+    assert user_message.memory_status == "done"
     assert user_message.type is None and user_message.context_used is None
     assert assistant_message.role == "assistant"
     assert assistant_message.content == "FAKE REPLY"
@@ -513,18 +516,22 @@ async def test_memory_gate_marks_low_scoring_messages_as_skipped(client, fake_ll
     headers = await onboard(client)
     session_id = await new_session(client, headers)
     fake_classifier.results = [route(durable=0.49), route(durable=0.5)]
+    fake_llm.json_replies = [extraction()]
 
     await ask(client, headers, session_id, "What should I focus on?")
     await ask(client, headers, session_id, "I am a vegetarian.")
 
     messages = await saved_messages(session_id)
-    assert [m.memory_status for m in messages if m.role == "user"] == ["skipped", "pending"]
+    # Below the threshold: skipped, and extraction never ran. At the threshold: processed.
+    assert [m.memory_status for m in messages if m.role == "user"] == ["skipped", "done"]
+    assert len(fake_llm.json_calls) == 1
 
 
 async def test_memory_gate_can_be_switched_off(client, fake_llm, fake_classifier):
     headers = await onboard(client)
     session_id = await new_session(client, headers)
     fake_classifier.results = [route(durable=0.01)]
+    fake_llm.json_replies = [extraction()]
     settings = get_settings().model_copy(update={"memory_gate_enabled": False})
     app.dependency_overrides[get_settings] = lambda: settings
     try:
@@ -532,7 +539,9 @@ async def test_memory_gate_can_be_switched_off(client, fake_llm, fake_classifier
     finally:
         app.dependency_overrides.clear()
 
-    assert (await saved_messages(session_id))[0].memory_status == "pending"
+    # With the gate off, even a low score goes to extraction.
+    assert (await saved_messages(session_id))[0].memory_status == "done"
+    assert len(fake_llm.json_calls) == 1
 
 
 async def test_session_title_comes_from_the_first_message_only(client, fake_llm, fake_classifier):
@@ -597,8 +606,9 @@ async def test_llm_failure_returns_a_friendly_reply_and_still_saves_the_turn(cli
     assert assistant_message.content == LLM_FAILURE_REPLY
     assert assistant_message.context_used == []
     assert assistant_message.used_memory_ids == []
-    # The gate passed, so extraction is still attempted later.
-    assert user_message.memory_status == "pending"
+    # The gate passed, so extraction was still attempted; the LLM is down, so it failed.
+    assert len(fake_llm.json_calls) == 1
+    assert user_message.memory_status == "failed"
 
 
 async def test_neo4j_down_answers_from_history_only(client, fake_llm, fake_classifier):
