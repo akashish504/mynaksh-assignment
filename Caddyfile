@@ -1,0 +1,5 @@
+# HTTPS in front of the API. Caddy gets and renews the certificate by itself.
+# API_DOMAIN comes from .env (see docker-compose.yml).
+{$API_DOMAIN} {
+	reverse_proxy api:8000
+}

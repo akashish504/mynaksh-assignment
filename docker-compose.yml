@@ -8,7 +8,24 @@ services:
     build: ./backend
     env_file: .env
     restart: unless-stopped
-    # Reachable only from the VM itself. The HTTPS proxy in front of it is the
-    # only thing exposed to the internet.
+    # Reachable only from the VM itself. Caddy is the only thing exposed to the internet.
     ports:
       - "127.0.0.1:8000:8000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80" # certificate checks and redirect to HTTPS
+      - "443:443"
+    environment:
+      # Compose reads API_DOMAIN from .env. Caddy gets only this one value, not the secrets.
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # certificates, kept across restarts
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:
