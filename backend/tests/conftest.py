@@ -30,6 +30,7 @@ from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
+from app.api.rate_limit import limiter
 from app.main import app
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -62,6 +63,7 @@ async def client():
     # httpx does not run FastAPI's startup/shutdown by itself, so it is done here.
     async with app.router.lifespan_context(app):
         await wipe_databases()
+        limiter.reset()  # rate-limit counters are in memory, so clear them between tests
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as http_client:
             yield http_client

@@ -1,7 +1,8 @@
 """POST /chat: one conversation turn."""
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
+from app.api.rate_limit import chat_limit, limiter
 from app.auth.dependencies import get_current_user
 from app.chat.pipeline import ChatPipeline, SessionNotFound, get_chat_pipeline
 from app.db.models import UserRow
@@ -12,7 +13,9 @@ router = APIRouter()
 
 
 @router.post("/chat", response_model=ChatResponse)
+@limiter.limit(chat_limit)
 async def chat(
+    request: Request,  # read by the rate limiter to find out who is calling
     body: ChatRequest,
     background_tasks: BackgroundTasks,
     user: UserRow = Depends(get_current_user),

@@ -22,6 +22,9 @@ litellm==1.104.2
 typesafe-sdk==0.7.2
 langsmith==0.14.4
 
+# Rate limiting
+slowapi==0.1.10
+
 # Tests
 pytest==9.1.1
 pytest-asyncio==1.4.0

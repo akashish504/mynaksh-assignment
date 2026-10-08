@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed browser origins.
     cors_origins: str = ""
 
+    # Limit on POST /chat, per user. Format: "<count>/<period>".
+    chat_rate_limit: str = "20/minute"
+
     # --- Feature flags ---
     clarify_enabled: bool = False
     use_embeddings: bool = False  # reserved, not implemented

@@ -7,9 +7,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from neo4j.exceptions import DriverError, Neo4jError
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import InterfaceError, OperationalError
 
 from app.api import auth, chat, health, memory, sessions, users
+from app.api.rate_limit import limiter, rate_limit_exceeded
 from app.brain.driver import create_driver
 from app.brain.schema import setup_schema
 from app.classifier.router import create_classifier
@@ -46,6 +48,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="MyNaksh Astrology Chat", lifespan=lifespan)
+
+# slowapi looks for the limiter on app.state.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded)
 
 app.add_middleware(
     CORSMiddleware,
