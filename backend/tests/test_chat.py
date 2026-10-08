@@ -60,6 +60,8 @@ async def test_scenario_1_new_user_gets_a_generic_answer_with_a_nudge(client, fa
     assert "[PROFILE]" not in prompt
     assert "[MEMORY]" not in prompt
     assert "[USER]\nWhat should I focus on in my career?" in prompt
+    # No sign is known, so the model is told not to make one up.
+    assert "Do not name, guess or imply any zodiac sign" in prompt
 
 
 async def test_scenario_3_a_stored_memory_is_retrieved_for_a_related_question(client, fake_llm, fake_classifier):
@@ -76,6 +78,7 @@ async def test_scenario_3_a_stored_memory_is_retrieved_for_a_related_question(cl
     assert "Name: Rahul" in prompt
     assert "Sun sign: Leo (Fire) - traits: confident, generous, expressive" in prompt
     assert "has not completed their birth details" not in prompt
+    assert "Do not name, guess or imply any zodiac sign" not in prompt  # the sign is known here
 
 
 async def test_scenario_4_a_follow_up_reuses_the_previous_turns_memories(client, fake_llm, fake_classifier):
@@ -404,7 +407,7 @@ async def test_smalltalk_sends_only_the_name_and_the_last_two_messages(client, f
     prompt = prompt_text(fake_llm)
     assert "[PROFILE]\nName: Rahul" in prompt
     assert "Date of birth" not in prompt
-    assert "Sun sign" not in prompt
+    assert "Sun sign: Leo" not in prompt
     assert "[MEMORY]" not in prompt
     # Only the last 2 of the 4 earlier messages.
     assert "[HISTORY]\nuser: Second question\nassistant: FAKE REPLY\n\n[USER]\nThanks!" in prompt
@@ -459,6 +462,8 @@ async def test_system_prompt_has_todays_date_and_the_no_clarifying_rule(client, 
     assert f"Today's date is {datetime.now(timezone.utc).date().isoformat()} (UTC)." in system["content"]
     assert "Do not ask clarifying questions. Make a reasonable assumption and state it briefly." in system["content"]
     assert "ask one short clarifying question" not in system["content"]
+    assert "Never mention them to the user" in system["content"]
+    assert "Reply in plain text without Markdown, in at most about 120 words." in system["content"]
     assert fake_llm.calls[-1][1]["role"] == "user"
 
 
@@ -621,6 +626,8 @@ async def test_neo4j_down_answers_from_history_only(client, fake_llm, fake_class
     assert "[HISTORY]\nuser: First question" in prompt
     # The profile IS complete; we just could not read it, so there is no nudge.
     assert "has not completed their birth details" not in prompt
+    # With no profile to read, the sign is unknown for this turn and must not be guessed.
+    assert "Do not name, guess or imply any zodiac sign" in prompt
     # Memory extraction is skipped and recorded as failed, even though the gate passed.
     assert (await saved_messages(session_id))[2].memory_status == "failed"
 
